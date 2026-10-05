@@ -20,7 +20,6 @@ function ensureStyle() {
   style.id = 'mwo-v3-style';
   style.textContent = `
 #extensionsMenu .mwo-v3 {
-  --mwo-bg: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #1b1d22));
   --mwo-panel: var(--SmartThemeBlurTintColor, #24272f);
   --mwo-card: color-mix(in srgb, var(--mwo-panel) 88%, white 12%);
   --mwo-text: var(--SmartThemeBodyColor, #f2f3f5);
@@ -70,7 +69,7 @@ function ensureStyle() {
 #extensionsMenu .mwo-v3-meta { color:var(--mwo-muted); font-size:10px; margin-top:3px; }
 #extensionsMenu .mwo-v3-star {
   position:absolute; right:5px; top:4px; border:0; background:transparent;
-  color:#e3ae25; font-size:16px; cursor:pointer;
+  color:#e3ae25; font-size:16px; cursor:pointer; padding:2px;
 }
 #extensionsMenu .mwo-v3-empty { padding:25px 10px; text-align:center; color:var(--mwo-muted); font-size:12px; }
 @media (max-width: 380px) {
@@ -80,8 +79,16 @@ function ensureStyle() {
   document.head.appendChild(style);
 }
 
+function cycleTheme() {
+  const state = getState();
+  patchState({
+    theme: state.theme === 'auto' ? 'light' : state.theme === 'light' ? 'dark' : 'auto',
+  });
+}
+
 export function createUI() {
   ensureStyle();
+
   const root = document.createElement('div');
   root.className = 'mwo-v3';
   root.hidden = true;
@@ -98,11 +105,8 @@ export function createUI() {
 
   root.querySelector('[data-act="theme"]').addEventListener('click', event => {
     event.stopPropagation();
-    const state = getState();
-    patchState({
-      theme: state.theme === 'auto' ? 'light' : state.theme === 'light' ? 'dark' : 'auto',
-    });
-    render(root, window.MagicWandOrganizer ? [] : [], {});
+    cycleTheme();
+    root.dispatchEvent(new CustomEvent('mwo-render'));
   });
 
   root.querySelector('.mwo-v3-search').addEventListener('input', event => {
@@ -111,8 +115,7 @@ export function createUI() {
   });
 
   root.addEventListener('mwo-render', () => {
-    const items = root.__mwoItems || [];
-    render(root, items, root.__mwoHandlers || {});
+    render(root, root.__mwoItems || [], root.__mwoHandlers || {});
   });
 
   return root;
@@ -120,6 +123,7 @@ export function createUI() {
 
 export function render(root, items, handlers) {
   if (!root) return;
+
   root.__mwoItems = items;
   root.__mwoHandlers = handlers;
 
@@ -160,14 +164,10 @@ export function render(root, items, handlers) {
   }
 
   for (const item of visible) {
-    const card = document.createElement('button');
-    card.type = 'button';
+    const card = document.createElement('div');
     card.className = 'mwo-v3-card';
-
-    const star = document.createElement('button');
-    star.type = 'button';
-    star.className = 'mwo-v3-star';
-    star.textContent = state.favorites.includes(item.id) ? '★' : '☆';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
 
     const icon = document.createElement('div');
     icon.className = 'mwo-v3-icon';
@@ -181,6 +181,12 @@ export function render(root, items, handlers) {
     meta.className = 'mwo-v3-meta';
     meta.textContent = `${categoryFor(item)} · ${item.meta || item.source}`;
 
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'mwo-v3-star';
+    star.textContent = state.favorites.includes(item.id) ? '★' : '☆';
+    star.setAttribute('aria-label', '收藏');
+
     card.append(icon, name, meta, star);
 
     star.addEventListener('click', event => {
@@ -189,9 +195,16 @@ export function render(root, items, handlers) {
       render(root, items, handlers);
     });
 
-    card.addEventListener('click', event => {
+    const run = event => {
       event.stopPropagation();
       handlers.execute(item);
+    };
+    card.addEventListener('click', run);
+    card.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        run(event);
+      }
     });
 
     grid.appendChild(card);
