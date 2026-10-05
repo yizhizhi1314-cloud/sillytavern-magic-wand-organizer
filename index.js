@@ -1,4 +1,9 @@
-(()=>{
+let initialized = false;
+
+export function init() {
+  if (initialized) return;
+  initialized = true;
+  {
  'use strict';
  const KEY='st-magic-wand-organizer';
  let st=Object.assign({theme:'auto',favorites:[],category:'全部',search:''},JSON.parse(localStorage.getItem(KEY)||'{}'));
@@ -21,4 +26,4 @@
  function close(){if(ov)ov.style.display='none'}
  let hooked=false;function hook(){const b=btn(),m=menu();if(!b||!m)return false;if(!hooked){b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();open()},true);hooked=true}m.style.display='none';if(!ov)build();return true}
  new MutationObserver(hook).observe(document.documentElement,{subtree:true,childList:true});let n=0,t=setInterval(()=>{if(hook()||++n>180)clearInterval(t)},500);window.MagicWandOrganizer={open,close,inspect:()=>{const b=btn(),m=menu();return{buttonFound:!!b,buttonId:b?.id||'',menuFound:!!m,menuId:m?.id||'',menuChildren:m?.children?.length||0}}};
-})();
+}
