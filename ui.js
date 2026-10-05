@@ -1,13 +1,5 @@
 import { getState, patchState, toggleFavorite } from './state.js';
 
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-}[char]));
-
 const CATEGORY_RULES = [
   ['💬 聊天', /聊天|翻译|输入|回复|消息|chat|translate/i],
   ['🖼 图片', /图片|图像|绘|画|头像|图库|image|stable diffusion/i],
@@ -17,223 +9,194 @@ const CATEGORY_RULES = [
 ];
 
 export function categoryFor(item) {
-  const haystack = `${item.name} ${item.categoryHint || ''} ${item.meta || ''}`;
-  return CATEGORY_RULES.find(([, rule]) => rule.test(haystack))?.[0] || '⚙️ 其他';
+  const text = `${item.name} ${item.categoryHint || ''} ${item.meta || ''}`;
+  return CATEGORY_RULES.find(([, rule]) => rule.test(text))?.[0] || '⚙️ 其他';
 }
 
-export function ensureStyle() {
-  if (document.getElementById('mwo-v2-style')) return;
+function ensureStyle() {
+  if (document.getElementById('mwo-v3-style')) return;
 
   const style = document.createElement('style');
-  style.id = 'mwo-v2-style';
+  style.id = 'mwo-v3-style';
   style.textContent = `
-#mwo-v2 {
-  --bg:#f8f8fb; --panel:#fff; --card:#f1f2f6; --text:#20222a;
-  --muted:#777b87; --border:#dfe1e8; --accent:#7657f5; --accent2:#eee9ff;
-  position:fixed; inset:0; z-index:2147483640; display:none; align-items:center;
-  justify-content:center; padding:12px; background:rgba(0,0,0,.48);
-  backdrop-filter:blur(8px);
+#extensionsMenu .mwo-v3 {
+  --mwo-bg: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #1b1d22));
+  --mwo-panel: var(--SmartThemeBlurTintColor, #24272f);
+  --mwo-card: color-mix(in srgb, var(--mwo-panel) 88%, white 12%);
+  --mwo-text: var(--SmartThemeBodyColor, #f2f3f5);
+  --mwo-muted: var(--SmartThemeQuoteColor, #9da2ad);
+  --mwo-border: color-mix(in srgb, var(--mwo-text) 14%, transparent);
+  --mwo-accent: var(--SmartThemeEmColor, #8b6cff);
+  box-sizing: border-box;
+  width: min(520px, 92vw);
+  max-width: 92vw;
+  padding: 10px;
+  color: var(--mwo-text);
+  font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
 }
-#mwo-v2.dark {
-  --bg:#17181e; --panel:#1d1f26; --card:#262932; --text:#f3f4f7;
-  --muted:#a6a9b3; --border:#393c47; --accent:#9b82ff; --accent2:#30294d;
+#extensionsMenu .mwo-v3 * { box-sizing: border-box; }
+#extensionsMenu .mwo-v3[hidden] { display: none !important; }
+#extensionsMenu .mwo-v3-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+#extensionsMenu .mwo-v3-title { flex:1; font-size:16px; font-weight:800; }
+#extensionsMenu .mwo-v3-count { font-size:11px; color:var(--mwo-muted); }
+#extensionsMenu .mwo-v3-btn {
+  border:1px solid var(--mwo-border); background:var(--mwo-card); color:var(--mwo-text);
+  border-radius:9px; min-width:34px; height:34px; cursor:pointer;
 }
-#mwo-v2.system { color-scheme:light; }
-@media (prefers-color-scheme:dark) {
-  #mwo-v2.system {
-    --bg:#17181e; --panel:#1d1f26; --card:#262932; --text:#f3f4f7;
-    --muted:#a6a9b3; --border:#393c47; --accent:#9b82ff; --accent2:#30294d;
-  }
+#extensionsMenu .mwo-v3-search {
+  width:100%; height:38px; border:1px solid var(--mwo-border); border-radius:10px;
+  background:var(--mwo-card); color:var(--mwo-text); padding:0 11px; outline:none; margin-bottom:8px;
 }
-#mwo-v2 .mwo-panel {
-  width:min(760px,96vw); height:min(82vh,820px); background:var(--bg);
-  color:var(--text); border:1px solid var(--border); border-radius:24px;
-  box-shadow:0 28px 90px rgba(0,0,0,.45); display:flex; flex-direction:column;
-  overflow:hidden; font-family:system-ui,-apple-system,'Microsoft YaHei',sans-serif;
+#extensionsMenu .mwo-v3-cats {
+  display:flex; gap:6px; overflow-x:auto; padding-bottom:7px; scrollbar-width:none;
 }
-#mwo-v2 .mwo-head { display:flex; align-items:center; gap:10px; padding:16px 17px 10px; }
-#mwo-v2 .mwo-title { font-size:20px; font-weight:800; flex:1; }
-#mwo-v2 .mwo-sub { font-size:11px; color:var(--muted); font-weight:500; margin-top:3px; }
-#mwo-v2 .mwo-btn {
-  width:40px; height:40px; border:1px solid var(--border); border-radius:12px;
-  background:var(--card); color:var(--text); cursor:pointer; font-size:18px;
+#extensionsMenu .mwo-v3-cat {
+  flex:0 0 auto; border:1px solid var(--mwo-border); background:transparent; color:var(--mwo-text);
+  border-radius:999px; padding:6px 10px; cursor:pointer; font-size:12px;
 }
-#mwo-v2 .mwo-search {
-  height:44px; margin:0 16px 10px; border:1px solid var(--border);
-  border-radius:14px; background:var(--panel); color:var(--text);
-  padding:0 14px; font-size:15px; outline:none;
+#extensionsMenu .mwo-v3-cat.on { background:var(--mwo-accent); border-color:var(--mwo-accent); color:#fff; }
+#extensionsMenu .mwo-v3-grid {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px;
+  max-height:min(58vh,420px); overflow:auto; padding-right:2px;
 }
-#mwo-v2 .mwo-cats {
-  display:flex; gap:7px; overflow:auto; padding:0 16px 11px; scrollbar-width:none;
+#extensionsMenu .mwo-v3-card {
+  position:relative; min-width:0; text-align:left; border:1px solid var(--mwo-border);
+  border-radius:11px; background:var(--mwo-card); color:var(--mwo-text);
+  padding:9px 31px 9px 10px; cursor:pointer;
 }
-#mwo-v2 .mwo-cat {
-  white-space:nowrap; padding:8px 12px; border:1px solid var(--border);
-  border-radius:999px; background:transparent; color:var(--text); cursor:pointer;
+#extensionsMenu .mwo-v3-card:active { transform:scale(.985); }
+#extensionsMenu .mwo-v3-icon { font-size:17px; margin-bottom:4px; }
+#extensionsMenu .mwo-v3-name { font-size:12px; font-weight:700; line-height:1.25; word-break:break-word; }
+#extensionsMenu .mwo-v3-meta { color:var(--mwo-muted); font-size:10px; margin-top:3px; }
+#extensionsMenu .mwo-v3-star {
+  position:absolute; right:5px; top:4px; border:0; background:transparent;
+  color:#e3ae25; font-size:16px; cursor:pointer;
 }
-#mwo-v2 .mwo-cat.on { background:var(--accent); border-color:var(--accent); color:#fff; }
-#mwo-v2 .mwo-grid {
-  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px;
-  overflow:auto; padding:2px 16px 16px;
+#extensionsMenu .mwo-v3-empty { padding:25px 10px; text-align:center; color:var(--mwo-muted); font-size:12px; }
+@media (max-width: 380px) {
+  #extensionsMenu .mwo-v3-grid { grid-template-columns:1fr; }
 }
-#mwo-v2 .mwo-card {
-  position:relative; min-height:78px; padding:12px 38px 11px 12px;
-  border:1px solid var(--border); border-radius:17px; background:var(--card);
-  color:var(--text); text-align:left; cursor:pointer; transition:.15s;
-}
-#mwo-v2 .mwo-card:hover { border-color:var(--accent); transform:translateY(-1px); }
-#mwo-v2 .mwo-icon {
-  width:38px; height:38px; border-radius:12px; background:var(--accent2);
-  display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:7px;
-}
-#mwo-v2 .mwo-icon i { font-size:19px; }
-#mwo-v2 .mwo-name { font-weight:700; font-size:14px; line-height:1.25; }
-#mwo-v2 .mwo-meta { font-size:10px; color:var(--muted); margin-top:4px; }
-#mwo-v2 .mwo-star {
-  position:absolute; right:8px; top:7px; border:0; background:transparent;
-  color:#d59a00; font-size:19px; cursor:pointer;
-}
-#mwo-v2 .mwo-empty { grid-column:1/-1; text-align:center; padding:55px 20px; color:var(--muted); }
-#mwo-v2 .mwo-foot {
-  margin-top:auto; border-top:1px solid var(--border); padding:8px 13px;
-  display:flex; color:var(--muted); font-size:11px;
-}
-#mwo-v2 .mwo-count { flex:1; }
-@media(max-width:520px) {
-  #mwo-v2 { align-items:flex-end; padding:0; }
-  #mwo-v2 .mwo-panel { width:100%; height:89vh; border-radius:23px 23px 0 0; }
-  #mwo-v2 .mwo-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding-left:12px; padding-right:12px; }
-  #mwo-v2 .mwo-card { min-height:74px; }
-}
-@media(max-width:340px) { #mwo-v2 .mwo-grid { grid-template-columns:1fr; } }
 `;
-
   document.head.appendChild(style);
 }
 
-export function createUI(handlers) {
+export function createUI() {
   ensureStyle();
-
-  let root = document.getElementById('mwo-v2');
-  if (root) return root;
-
-  root = document.createElement('div');
-  root.id = 'mwo-v2';
+  const root = document.createElement('div');
+  root.className = 'mwo-v3';
+  root.hidden = true;
   root.innerHTML = `
-    <div class="mwo-panel">
-      <div class="mwo-head">
-        <div class="mwo-title">
-          🪄 魔棒工具库
-          <div class="mwo-sub">自动发现 · 原功能直连 · 收藏 · 搜索 · 分类</div>
-        </div>
-        <button class="mwo-btn" data-act="theme">🌓</button>
-        <button class="mwo-btn" data-act="close">×</button>
-      </div>
-      <input class="mwo-search" placeholder="🔍 搜索工具…">
-      <div class="mwo-cats"></div>
-      <div class="mwo-grid"></div>
-      <div class="mwo-foot">
-        <span class="mwo-count"></span>
-        <span>⭐ 收藏 · Esc 关闭</span>
-      </div>
+    <div class="mwo-v3-head">
+      <div class="mwo-v3-title">🪄 魔棒工具库</div>
+      <div class="mwo-v3-count"></div>
+      <button class="mwo-v3-btn" type="button" data-act="theme">🌓</button>
     </div>
+    <input class="mwo-v3-search" type="search" placeholder="搜索工具…">
+    <div class="mwo-v3-cats"></div>
+    <div class="mwo-v3-grid"></div>
   `;
 
-  document.body.appendChild(root);
-
-  root.querySelector('[data-act="close"]').onclick = handlers.close;
-  root.querySelector('[data-act="theme"]').onclick = handlers.theme;
-
-  root.addEventListener('click', event => {
-    if (event.target === root) handlers.close();
+  root.querySelector('[data-act="theme"]').addEventListener('click', event => {
+    event.stopPropagation();
+    const state = getState();
+    patchState({
+      theme: state.theme === 'auto' ? 'light' : state.theme === 'light' ? 'dark' : 'auto',
+    });
+    render(root, window.MagicWandOrganizer ? [] : [], {});
   });
 
-  root.querySelector('.mwo-search').addEventListener('input', event => {
+  root.querySelector('.mwo-v3-search').addEventListener('input', event => {
     patchState({ search: event.target.value });
-    handlers.render();
+    root.dispatchEvent(new CustomEvent('mwo-render'));
+  });
+
+  root.addEventListener('mwo-render', () => {
+    const items = root.__mwoItems || [];
+    render(root, items, root.__mwoHandlers || {});
   });
 
   return root;
 }
 
 export function render(root, items, handlers) {
+  if (!root) return;
+  root.__mwoItems = items;
+  root.__mwoHandlers = handlers;
+
   const state = getState();
   const categories = ['全部', '⭐ 常用', '💬 聊天', '🖼 图片', '🔊 多媒体', '🧩 脚本', '🛠 管理', '⚙️ 其他'];
-
-  const cats = root.querySelector('.mwo-cats');
+  const cats = root.querySelector('.mwo-v3-cats');
   cats.innerHTML = '';
 
-  categories.forEach(category => {
+  for (const category of categories) {
     const button = document.createElement('button');
-    button.className = `mwo-cat${state.category === category ? ' on' : ''}`;
+    button.type = 'button';
+    button.className = 'mwo-v3-cat' + (state.category === category ? ' on' : '');
     button.textContent = category;
-    button.onclick = () => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
       patchState({ category });
-      handlers.render();
-    };
+      render(root, items, handlers);
+    });
     cats.appendChild(button);
-  });
+  }
 
-  const query = state.search.toLowerCase().trim();
-
+  const query = state.search.trim().toLowerCase();
   const visible = items.filter(item => {
-    const category = categoryFor(item);
+    const cat = categoryFor(item);
     const categoryMatch =
       state.category === '全部' ||
       (state.category === '⭐ 常用' && state.favorites.includes(item.id)) ||
-      category === state.category;
-
-    const queryMatch = !query ||
-      `${item.name} ${item.meta || ''}`.toLowerCase().includes(query);
-
+      cat === state.category;
+    const queryMatch = !query || `${item.name} ${item.meta || ''}`.toLowerCase().includes(query);
     return categoryMatch && queryMatch;
   });
 
-  const grid = root.querySelector('.mwo-grid');
+  const grid = root.querySelector('.mwo-v3-grid');
   grid.innerHTML = '';
 
   if (!visible.length) {
-    grid.innerHTML = '<div class="mwo-empty">没有找到工具<br><small>工具出现后会自动加入这里</small></div>';
+    grid.innerHTML = '<div class="mwo-v3-empty">暂时没有发现工具</div>';
   }
 
-  visible.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'mwo-card';
-    card.innerHTML = `
-      <div class="mwo-icon"></div>
-      <div class="mwo-name"></div>
-      <div class="mwo-meta"></div>
-      <button class="mwo-star" type="button"></button>
-    `;
+  for (const item of visible) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'mwo-v3-card';
 
-    const icon = card.querySelector('.mwo-icon');
-    if (/^fa-/.test(item.icon)) {
-      icon.innerHTML = `<i class="${escapeHtml(item.icon)}"></i>`;
-    } else {
-      icon.textContent = item.icon || '✨';
-    }
-
-    card.querySelector('.mwo-name').textContent = item.name;
-    card.querySelector('.mwo-meta').textContent =
-      `${categoryFor(item)} · ${item.meta || item.source}`;
-
-    const star = card.querySelector('.mwo-star');
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'mwo-v3-star';
     star.textContent = state.favorites.includes(item.id) ? '★' : '☆';
-    star.onclick = event => {
+
+    const icon = document.createElement('div');
+    icon.className = 'mwo-v3-icon';
+    icon.textContent = item.icon && !item.icon.includes('fa-') ? item.icon : '✨';
+
+    const name = document.createElement('div');
+    name.className = 'mwo-v3-name';
+    name.textContent = item.name;
+
+    const meta = document.createElement('div');
+    meta.className = 'mwo-v3-meta';
+    meta.textContent = `${categoryFor(item)} · ${item.meta || item.source}`;
+
+    card.append(icon, name, meta, star);
+
+    star.addEventListener('click', event => {
       event.stopPropagation();
       toggleFavorite(item.id);
-      handlers.render();
-    };
+      render(root, items, handlers);
+    });
 
-    card.onclick = () => handlers.execute(item);
+    card.addEventListener('click', event => {
+      event.stopPropagation();
+      handlers.execute(item);
+    });
+
     grid.appendChild(card);
-  });
+  }
 
-  root.querySelector('.mwo-count').textContent =
-    `共 ${items.length} 个工具 · 已显示 ${visible.length} 个`;
-
-  root.className =
-    state.theme === 'dark' ? 'dark' :
-    state.theme === 'auto' ? 'system' : '';
-
-  root.querySelector('.mwo-search').value = state.search;
+  root.querySelector('.mwo-v3-count').textContent = `${items.length} 个工具`;
+  root.querySelector('.mwo-v3-search').value = state.search;
 }
