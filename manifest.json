@@ -1,15 +1,13 @@
 {
-  "display_name": "🪄 魔棒快捷菜单收纳器",
-  "loading_order": 100,
+  "display_name": "🪄 魔棒工具库",
+  "loading_order": 99,
   "requires": [],
   "optional": [],
   "js": "index.js",
   "css": "",
   "author": "yizhizhi1314-cloud",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "homePage": "https://github.com/yizhizhi1314-cloud/sillytavern-magic-wand-organizer",
   "auto_update": true,
-  "hooks": {
-    "activate": "init"
-  }
+  "hooks": { "activate": "init" }
 }
