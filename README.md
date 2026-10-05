@@ -1,52 +1,46 @@
-# 🪄 SillyTavern 魔棒快捷菜单收纳器
+# 🪄 SillyTavern 魔棒工具库 2.0
 
-把 SillyTavern 左下角扩展菜单整理成更好点、更适合手机的可视化弹窗。
+这是一次重新设计，不在旧版上继续打补丁。
 
-## 这次是「酒馆原生扩展」
+## 核心思路
 
-现在可以直接在 SillyTavern 的：
+参考 QR 助手的结构，把“发现工具”和“显示工具”彻底分开：
 
-**扩展 → 安装扩展 → 粘贴 Git URL**
+`发现 → 统一数据 → 分类/收藏 → 自己渲染 → 调回原功能 → 持续监听`
 
-安装，不需要 Tampermonkey / Violentmonkey。
+### 自动发现
 
-Git URL：
+1. **SillyTavern 原生魔棒项目**：扫描 `#extensionsMenu` 中实际存在的 `.extensionsMenuExtensionButton`，不复制原功能。
+2. **Tavern Helper / JSSlashRunner**：如果存在 `getAllEnabledScriptButtons()`，自动把已启用脚本按钮纳入工具库。
+3. **第三方注册接口**：其他工具可以向 `window.magicWandOrganizerExtensions` 注册 `{ id, name, icon, category, execute }`。
+4. **MutationObserver**：原生扩展动态加入按钮后自动重新发现，不需要手工刷新列表。
 
-https://github.com/yizhizhi1314-cloud/sillytavern-magic-wand-organizer
+### 原功能保留
 
-SillyTavern 会通过 Git 下载这个仓库，并读取根目录的 `manifest.json` 自动安装。
+每个工具都保存自己的原始执行入口：
 
-## 功能
+- 原生魔棒工具 → 调用原始 DOM 元素 `.click()`
+- Tavern Helper → 发出原脚本按钮事件
+- 第三方注册工具 → 调用注册时提供的 `execute()`
 
-- 🔍 工具搜索
-- 🗂️ 自动分类
-- ⭐ 收藏常用工具
-- 🌓 浅色 / 深色 / 自动主题
-- 📱 手机端底部抽屉布局
-- ⌨️ Ctrl/Cmd + K 快速打开
-- Esc 或点击背景关闭
-- 尽量调用 SillyTavern 原来的菜单按钮，不重复实现原功能
+本项目不重新实现翻译、绘图、TTS、图库等扩展功能。
 
 ## 安装
 
-1. 打开 SillyTavern「扩展」面板。
-2. 选择「安装扩展」。
-3. 粘贴上面的 Git URL。
-4. 点击安装。
-5. 安装完成后刷新 SillyTavern。
+SillyTavern → 扩展 → 安装扩展 → Git URL：
 
-> 注意：SillyTavern 的第三方扩展安装使用 Git，因此运行酒馆的环境需要可用 Git。
+`https://github.com/yizhizhi1314-cloud/sillytavern-magic-wand-organizer`
 
-## 排错
+安装后刷新酒馆。
+
+## 调试
 
 浏览器控制台执行：
 
-```
-MagicWandOrganizer.inspect()
-```
+`MagicWandOrganizer.inspect()`
 
-正常应看到 `buttonFound: true` 和 `menuFound: true`。
+它会返回原生按钮、原生工具、Tavern Helper 工具、第三方注册工具以及最终发现总数。
 
-## 许可证
+## 说明
 
-MIT
+“自动发现所有工具”有一个边界：一个完全不向酒馆注册 UI、API、事件或 DOM 入口的纯后台脚本没有可被调用的工具按钮，因此无法凭空制造一个入口。本项目会尽量通过原生魔棒 DOM、Tavern Helper API 和开放注册接口覆盖实际可操作的工具。
