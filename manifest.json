@@ -6,7 +6,10 @@
   "js": "index.js",
   "css": "",
   "author": "yizhizhi1314-cloud",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "homePage": "https://github.com/yizhizhi1314-cloud/sillytavern-magic-wand-organizer",
-  "auto_update": true
+  "auto_update": true,
+  "hooks": {
+    "activate": "init"
+  }
 }
